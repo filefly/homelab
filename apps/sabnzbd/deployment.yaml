@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sabnzbd
+  namespace: sabnzbd
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sabnzbd
+  template:
+    metadata:
+      labels:
+        app: sabnzbd
+    spec:
+      initContainers:
+        - name: init-config
+          image: busybox:stable
+          command: ["/bin/sh", "-c"]
+          args:
+            - "cp /config-template/sabnzbd.ini /config/sabnzbd.ini && chown 1000:1000 /config/sabnzbd.ini"
+          volumeMounts:
+            - name: sabnzbd-config-pvc
+              mountPath: /config
+            - name: sabnzbd-config-template
+              mountPath: /config-template
+              readOnly: true
+      containers:
+        - name: sabnzbd
+          image: linuxserver/sabnzbd:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: web
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: "America/Denver"
+          volumeMounts:
+            - name: downloads
+              mountPath: /downloads
+            - name: sabnzbd-config-pvc
+              mountPath: /config
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 20
+      volumes:
+        - name: downloads
+          persistentVolumeClaim:
+            claimName: sabnzbd-downloads-pvc
+        - name: sabnzbd-config-pvc
+          persistentVolumeClaim:
+            claimName: sabnzbd-config-pvc
+        - name: sabnzbd-config-template
+          configMap:
+            name: sabnzbd-config
+            items:
+              - key: sabnzbd.ini
+                path: sabnzbd.ini

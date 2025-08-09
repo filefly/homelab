@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sabnzbd-config
+  namespace: sabnzbd
+data:
+  sabnzbd.ini: |
+    [misc]
+    host_whitelist = sabnzbd.cl.flylab.dev
+    download_dir = /downloads/incomplete
+    complete_dir = /downloads
